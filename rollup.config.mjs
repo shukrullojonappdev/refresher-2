@@ -12,7 +12,7 @@ export default [
   {
     input: 'src/background.js',
     output: {
-      file: 'dist/background.js',
+      file: 'dist/background/background.js',
       format: 'cjs',
       plugins: [terser()]
     }
