@@ -39,6 +39,7 @@ window.onload = (e) => {
     if (e.target.textContent.trim() === 'Load Board Home') return
     renderControlPanel()
   }
+
   savedSearches.onclick = () => {
     setTimeout(() => {
       renderControlPanel()
@@ -55,6 +56,8 @@ const renderOnWindowResizeWhenTabPanel = () => {
     const startBtn = document.getElementById('refresher-start')
     stopBtn && (stopBtn.style.display = 'none')
     startBtn && (startBtn.style.display = 'block')
+    renderEB()
+
     const activeTab = document.getElementsByClassName('active')[0];
     if (!activeTab) {
       const searchPanel = document.getElementsByClassName('search__panel')[0];
@@ -89,6 +92,7 @@ const renderOnWindowResizeWhenSearchPanel = () => {
     const startBtn = document.getElementById('refresher-start')
     stopBtn && (stopBtn.style.display = 'none')
     startBtn && (startBtn.style.display = 'block')
+    renderEB()
 
     const activeTab = document.getElementsByClassName('active')[0];
     if (!activeTab) {
@@ -172,7 +176,7 @@ const createControlPanel = async () => {
   controlPanel.innerHTML = `
     <div class="refresher__params">
       <div class="refresher-slider">
-        <input type="range" min="300" max="1500" value="300" step="100" class="refresher__slider" id="refresher-range">
+        <input type="range" min="600" max="2400" value="300" step="100" class="refresher__slider" id="refresher-range">
         <p>Value: <span id="refresher-range-value"></span> ms</p>
       </div>
       <div class="refresher__params-row">
@@ -240,13 +244,15 @@ const renderRefresherActionBtns = () => {
         if (!utilityBar) return
         renderControlPanel()
       })
+    } else {
+      renderEB()
     }
 
     if (e.target != refreshButton && e.target != refreshButton.childNodes[0] && refresherStatus) {
+      clearInterval(interval)
       refresherStatus = false
       stopBtn.style.display = 'none'
       startBtn.style.display = 'block'
-      clearInterval(interval)
       return
     }
     if (e.target.id === startBtn.id) {
@@ -282,7 +288,7 @@ const switchEvents = () => {
   }
   ebEl.onclick = () => {
     eb = !eb
-    eb ? loadsEasyBook() : removeEasyBookBtns()
+    renderEB()
   }
   sdEl.onclick = () => {
     sd = !sd
@@ -333,6 +339,13 @@ const runInterval = (refreshButton) => {
         loads = new Set()
         if (sot) {
           newLoadsToTop(newLoads, loadList)
+        }
+        if (sd) {
+          renderEB()
+        }
+        if (au) {
+          console.log('Auto book');
+          autoBook()
         }
         changeBgColorNewLoads(newLoads)
         stopBtn.style.display = 'none'
@@ -388,28 +401,50 @@ const changeBgColorNewLoads = async (newLoads) => {
 }
 
 const newLoadsToTop = (newLoads, loadList) => {
-  console.log(!newLoads || !loadList || loadList.length === 0 || newLoads.size === 0);
   if (!newLoads || !loadList || loadList.length === 0 || newLoads.size === 0) return
   [...newLoads].forEach(e => {
-    console.log(e.split(' ')[0]);
     const elem = document.getElementById(e.split(' ')[0]).parentNode
     if (!elem) return
-    const elemCopy = elem.cloneNode(true)
-    elem.remove()
-    loadList.insertBefore(elemCopy, loadList.childNodes[0])
-    console.log(elemCopy, loadList);
+    loadList.insertBefore(elem, loadList.childNodes[0])
   })
 }
 
-const loadsEasyBook = () => {
+const showLoadDetails = () => {
   const loadList = document.getElementsByClassName('load-list')[0]
   if (!loadList || loadList.length === 0) return
+  loadList.childNodes[0].childNodes[0].click()
+}
 
-  loadList.childNodes.forEach((e) => {
-    const btn = createBtn()
-    if (e.getElementsByClassName('ebBtn')[0]) return
-    e.childNodes[0].childNodes[0].appendChild(btn)
-  });
+const renderEB = () => {
+  eb ?
+    loadsEasyBook()
+    : removeEasyBookBtns()
+}
+
+const loadsEasyBook = () => {
+  let loadList = document.getElementsByClassName('load-list')[0]
+  if (!loadList) {
+    let interval = setInterval(() => {
+      loadList = document.getElementsByClassName('load-list')[0]
+      if (!loadList) return
+      if (loadList.length === 0) {
+        clearInterval(interval)
+        return
+      }
+      loadList.childNodes.forEach((e) => {
+        const btn = createBtn()
+        if (e.getElementsByClassName('ebBtn')[0]) return
+        e.childNodes[0].childNodes[0].appendChild(btn)
+      });
+      clearInterval(interval)
+    }, 150)
+  } else {
+    loadList.childNodes.forEach((e) => {
+      const btn = createBtn()
+      if (e.getElementsByClassName('ebBtn')[0]) return
+      e.childNodes[0].childNodes[0].appendChild(btn)
+    });
+  }
 }
 
 const removeEasyBookBtns = () => {
@@ -422,6 +457,52 @@ const removeEasyBookBtns = () => {
   });
 }
 
+const autoBook = () => {
+  let loadList = document.getElementsByClassName('load-list')[0]
+  console.log(loadList);
+  if (!loadList) {
+    let interval = setInterval(() => {
+      loadList = document.getElementsByClassName('load-list')[0]
+      if (!loadList) return
+      if (loadList.length === 0) {
+        clearInterval(interval)
+        return
+      }
+      console.log(loadList.childNodes[0].childNodes[0]);
+      loadList.childNodes[0].childNodes[0].click()
+      loadList.childNodes[0].childNodes[0].onclick = () => {
+        let woBookButton = document.getElementsByClassName('wo-book-button')[0]
+        if (!woBookButton) {
+          let interval = setInterval(() => {
+            woBookButton = document.getElementsByClassName('wo-book-button')[0]
+            if (!woBookButton) return
+            clickBookBtn(woBookButton)
+            clearInterval(interval)
+          })
+        } else {
+          clickBookBtn(woBookButton)
+        }
+      }
+      clearInterval(interval)
+    }, 150)
+  } else {
+    console.log(loadList.childNodes[0].childNodes[0]);
+    loadList.childNodes[0].childNodes[0].click()
+    loadList.childNodes[0].childNodes[0].onclick = () => {
+      let woBookButton = document.getElementsByClassName('wo-book-button')[0]
+      if (!woBookButton) {
+        let interval = setInterval(() => {
+          woBookButton = document.getElementsByClassName('wo-book-button')[0]
+          if (!woBookButton) return
+          clickBookBtn(woBookButton)
+          clearInterval(interval)
+        })
+      } else {
+        clickBookBtn(woBookButton)
+      }
+    }
+  }
+}
 
 const createBtn = () => {
   const ebBtn = document.createElement('button')
@@ -429,8 +510,35 @@ const createBtn = () => {
   ebBtn.classList.add('ebBtn')
 
   ebBtn.onclick = () => {
-    // ebBtn.parentNode[0].parentNode[0].click()
+    let woBookButton = document.getElementsByClassName('wo-book-button')[0]
+    if (!woBookButton) {
+      let interval = setInterval(() => {
+        woBookButton = document.getElementsByClassName('wo-book-button')[0]
+        if (!woBookButton) return
+        clickBookBtn(woBookButton)
+        clearInterval(interval)
+      }, 150)
+    } else {
+      clickBookBtn(woBookButton)
+    }
   }
 
   return ebBtn
+}
+
+const clickBookBtn = (woBookButton) => {
+  woBookButton.click()
+  woBookButton.onclick = () => {
+    let confirmBtn = document.getElementsByClassName('css-n0loux')[0]
+    if (!confirmBtn) {
+      let interval = setInterval(() => {
+        confirmBtn = document.getElementsByClassName('css-n0loux')[0]
+        if (!confirmBtn) return
+        confirmBtn.click()
+        clearInterval(interval)
+      }, 150)
+    } else {
+      confirmBtn.click()
+    }
+  }
 }
