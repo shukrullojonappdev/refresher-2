@@ -1,4 +1,4 @@
-let refresherStatus = false, refreshTime = 0, sot = false, eb = false, sd = false, au = false, interval
+let refresherStatus = false, refreshTime = 0, sot = false, eb = false, sd = false, au = false, interval, priceChange = 0
 const COLOR = '#a3cef0', NOTIFY_SOUND_SRC = chrome.runtime.getURL('assets/n.mp3'), NOTIFY_SOUND = new Audio(NOTIFY_SOUND_SRC)
 
 window.onload = (e) => {
@@ -135,6 +135,7 @@ const renderControlPanel = () => {
         utilityBar.children[0].prepend(controlPanel)
         renderRefresherActionBtns()
         changeSliderValue()
+        priceChangeInput()
         switchEvents()
 
         // Get default switch for refresh, check if it not exists and disable it
@@ -153,6 +154,7 @@ const renderControlPanel = () => {
       utilityBar.children[0].prepend(controlPanel)
       renderRefresherActionBtns()
       changeSliderValue()
+      priceChangeInput()
       switchEvents()
 
       setTimeout(() => {
@@ -213,6 +215,7 @@ const createControlPanel = async () => {
           </p>
         </div>
       </div>
+      <div style="max-width: 150px" class="css-rioogt"><div class="css-381xv2" mdn-input-box=""><div class="css-14lg5yy"><div class="css-7dv6qn"><input class="css-ayvxqa" id="price-change" type="number" placeholder="Price change"></div></div></div></div>
     </div>
     <div class="refresher__action-row">
       <img class="refresher__action-btn" id="refresher-start" src="${onBtn}" alt="start">
@@ -277,6 +280,13 @@ const changeSliderValue = () => {
   }
 }
 
+const priceChangeInput = () => {
+  const priceInput = document.getElementById('price-change')
+  priceInput.oninput = () => {
+    priceChange = priceInput.value
+  }
+}
+
 // Event listeners
 const switchEvents = () => {
   const sotEl = document.getElementById('sot')
@@ -308,8 +318,8 @@ const refreshLoads = (e) => {
 
 const runInterval = (refreshButton) => {
   let firstTime = true
-  let loads = new Set()
-  let newLoads = new Set()
+  let loads = {}
+  let newLoads = {}
   const stopBtn = document.getElementById('refresher-stop')
   const startBtn = document.getElementById('refresher-start')
 
@@ -321,9 +331,9 @@ const runInterval = (refreshButton) => {
 
       // First refresh interval
       if (firstTime) {
-        if (loads.size === 0) {
+        if (Object.entries(loads).length === 0) {
           loads = createSet(loadList)
-          newLoads = new Set()
+          newLoads = {}
         }
         firstTime = false
         refreshLoads(refreshButton)
@@ -333,10 +343,10 @@ const runInterval = (refreshButton) => {
 
       // Stop interval when loads changed
       newLoads = await getNewLoads(tempLoads, loads)
-      if (newLoads.size > 0) {
+      if (Object.entries(newLoads).length > 0) {
         clearInterval(interval)
         firstTime = true
-        loads = new Set()
+        loads = {}
         if (sot) {
           newLoadsToTop(newLoads, loadList)
         }
@@ -344,7 +354,6 @@ const runInterval = (refreshButton) => {
           renderEB()
         }
         if (au) {
-          console.log('Auto book');
           autoBook()
         }
         changeBgColorNewLoads(newLoads)
@@ -367,11 +376,10 @@ const runInterval = (refreshButton) => {
 }
 
 const createSet = (list) => {
-  let loads = new Set()
+  let loads = {}
 
   list.childNodes.forEach(e => {
-    const data = e.childNodes[0].id + e.getElementsByClassName('css-11tnikh')[1].textContent
-    loads.add(data)
+    loads[e.childNodes[0].id.trim()] = e.getElementsByClassName('css-11tnikh')[1].textContent.trim().replace(/\$|\,/gi, '');
   })
 
   return loads
@@ -379,21 +387,26 @@ const createSet = (list) => {
 
 const getNewLoads = async (tempLoads, loads) => {
   if (!tempLoads || !loads) return
-  if (tempLoads.size !== loads.size) return
-  let newLoads = new Set();
-  [...tempLoads].forEach((x) => {
-    if (!loads.has(x)) {
-      newLoads.add(x)
+  let newLoads = {};
+  Object.entries(tempLoads).forEach(([key, _value]) => {
+    if (!(loads[`${key}`] !== undefined)) {
+      newLoads[`${key}`] = tempLoads[`${key}`]
       return
     }
+    if (Number(tempLoads[`${key}`]) <= Number(loads[`${key}`])) return
+    const a = Number(tempLoads[`${key}`])
+    const b = Number(loads[`${key}`])
+    const res = a - b
+    if (res < Number(priceChange)) return
+    newLoads[`${key}`] = tempLoads[`${key}`]
   })
   return newLoads
 }
 
 const changeBgColorNewLoads = async (newLoads) => {
   if (!newLoads) return
-  [...newLoads].forEach(e => {
-    const load = document.getElementById(e.split(' ')[0]).parentNode
+  Object.entries(newLoads).forEach(([key, _value]) => {
+    const load = document.getElementById(`${key}`).parentNode
     if (load) {
       load.style.backgroundColor = COLOR
     }
@@ -402,8 +415,8 @@ const changeBgColorNewLoads = async (newLoads) => {
 
 const newLoadsToTop = (newLoads, loadList) => {
   if (!newLoads || !loadList || loadList.length === 0 || newLoads.size === 0) return
-  [...newLoads].forEach(e => {
-    const elem = document.getElementById(e.split(' ')[0]).parentNode
+  Object.entries(newLoads).forEach(([key, _value]) => {
+    const elem = document.getElementById(`${key}`).parentNode
     if (!elem) return
     loadList.insertBefore(elem, loadList.childNodes[0])
   })
@@ -459,7 +472,6 @@ const removeEasyBookBtns = () => {
 
 const autoBook = () => {
   let loadList = document.getElementsByClassName('load-list')[0]
-  console.log(loadList);
   if (!loadList) {
     let interval = setInterval(() => {
       loadList = document.getElementsByClassName('load-list')[0]
@@ -468,7 +480,6 @@ const autoBook = () => {
         clearInterval(interval)
         return
       }
-      console.log(loadList.childNodes[0].childNodes[0]);
       loadList.childNodes[0].childNodes[0].click()
       loadList.childNodes[0].childNodes[0].onclick = () => {
         let woBookButton = document.getElementsByClassName('wo-book-button')[0]
@@ -486,7 +497,6 @@ const autoBook = () => {
       clearInterval(interval)
     }, 150)
   } else {
-    console.log(loadList.childNodes[0].childNodes[0]);
     loadList.childNodes[0].childNodes[0].click()
     loadList.childNodes[0].childNodes[0].onclick = () => {
       let woBookButton = document.getElementsByClassName('wo-book-button')[0]
